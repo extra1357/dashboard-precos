@@ -1,0 +1,145 @@
+from selenium import webdriver
+import pandas as pd
+import dash
+
+
+options = webdriver.ChromeOptions()
+options.add_argument("--headless")  # Executar sem abrir o navegador (opcional)
+driver = webdriver.Chrome(options=options)  # Se o ChromeDriver estiver no PATH
+
+#Passo 4: Testar se o Selenium está funcionando
+
+from selenium import webdriver
+
+options = webdriver.ChromeOptions()
+options.add_argument("--headless")  # Executar sem abrir o navegador
+driver = webdriver.Chrome(options=options)
+
+driver.get("https://www.google.com")
+print("Título da página:", driver.title)
+
+driver.quit()
+
+#Passo 2: Ajustar o Código
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+import time
+
+# Configurar o Selenium
+options = webdriver.ChromeOptions()
+options.add_argument("--headless")  # Para rodar sem abrir o navegador
+driver = webdriver.Chrome(options=options)
+
+# Lista de atacadistas e URLs de pesquisa
+atacadistas = {
+    "Tenda": {
+        "url": "https://www.tendaatacado.com.br/busca?q=",
+        "seletor_preco": ".preco-produto"  # Ajustar com o correto
+    },
+    "Roldão": {
+        "url": "https://www.roldao.com.br/buscar?q=",
+        "seletor_preco": ".preco-produto"  # Ajustar com o correto
+    },
+    "Atacadão": {
+        "url": "https://www.atacadao.com.br/buscar?q=",
+        "seletor_preco": ".preco-produto"  # Ajustar com o correto
+    }
+}
+
+# Lista de produtos a buscar
+produtos = ["leite", "arroz", "feijão"]
+
+# Dicionário para armazenar os preços
+precos = {}
+
+for produto in produtos:
+    precos[produto] = {}
+    for loja, info in atacadistas.items():
+        try:
+            # Acessar a página de busca do produto
+            driver.get(info["url"] + produto)
+            time.sleep(3)  # Aguarda a página carregar
+            
+            # Buscar o primeiro preço da lista
+            seletor_css = "li:nth-child(2) article p"
+            preco_elemento = driver.find_element(By.CSS_SELECTOR, info["seletor_preco"])
+            preco = preco_elemento.text if preco_elemento else "Não encontrado"
+            
+            precos[produto][loja] = preco
+        except Exception as e:
+            precos[produto][loja] = f"Erro: {e}"
+
+# Fechar o navegador
+driver.quit()
+
+# Exibir os preços coletados
+for produto, lojas in precos.items():
+    print(f"\nPreços para: {produto}")
+    for loja, preco in lojas.items():
+        print(f"{loja}: {preco}")
+
+#painel para vsualização dos preços
+
+import dash
+from dash import dcc, html
+import pandas as pd
+import plotly.express as px
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
+
+# Configuração do Selenium
+def extrair_precos():
+    driver = webdriver.Chrome()
+    urls = {
+        "Tenda": "https://www.atacadao.com.br/feijao-carioca-camil-tipo-1-7382-9742/p",
+        "Roldão": "URL_DO_PRODUTO_NO_ROLDAO",
+        "Atacadão": "URL_DO_PRODUTO_NO_ATACADAO"
+    }
+    precos = {}
+
+    for atacadista, url in urls.items():
+        driver.get(url)
+        time.sleep(3)  # Espera a página carregar
+        
+        try:
+            # Seletor CSS (ajuste conforme necessário)
+            seletor_css = "p.preco"  
+            preco_elemento = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            precos[atacadista] = float(preco_elemento.text.replace("R$", "").replace(",", "."))
+        except:
+            precos[atacadista] = None
+
+    driver.quit()
+    return precos
+
+# Coletar dados
+dados_precos = extrair_precos()
+
+# Criar DataFrame para exibição
+df = pd.DataFrame(list(dados_precos.items()), columns=["Atacadista", "Preço"])
+
+# Criar dashboard Dash
+app = dash.Dash(__name__)
+
+app.layout = html.Div([
+    html.H1("Comparação de Preços - Atacadistas"),
+    
+    # Tabela de preços
+    html.Table([
+        html.Tr([html.Th("Atacadista"), html.Th("Preço (R$)")]) ] +
+        [html.Tr([html.Td(row["Atacadista"]), html.Td(row["Preço"])]) for _, row in df.iterrows()]
+    ),
+    
+    # Gráfico de preços
+    dcc.Graph(
+        figure=px.bar(df, x="Atacadista", y="Preço", title="Preço dos Produtos nos Atacadistas")
+    )
+])
+
+if __name__ == "__main__":
+    app.run_server(debug=True)
+    app.pause
+
